@@ -322,11 +322,8 @@ impl TcpSocket {
 	}
 
 	pub fn close(&mut self) {
-		if (self.socket.connection_state == Closed) {
-			return;
-		}
-		self.socket.close_socket();
 		self.remove_pending_events();
+		self.socket.close_socket();
 	}
 
 	pub fn write(&mut self, buf: &[u8]) -> IoResult<(uint)> {
@@ -412,7 +409,7 @@ impl TcpSocket {
 			let sock: *mut TcpSocket = func_ptr as *mut TcpSocket;
 
 			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
-				let mut resBuffer = [0, ..0];
+				let mut resBuffer = [0, ..0]; // TODO: This gives false positives
 				let res = (*sock).socket.read(resBuffer);
 				match res {
 					Ok(_) => fail!("There seems to be a logic in error in this socket implementation"),
@@ -591,5 +588,142 @@ impl RawTcpServerSocket {
 impl Drop for RawTcpServerSocket {
 	fn drop(&mut self) {
 		self.close_socket();
+	}
+}
+
+pub struct TcpServerSocket {
+	priv process_func: fn(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32),
+	priv socket: RawTcpServerSocket,
+	priv event_queue: Rc<RefCell<EventQueueImpl>>,
+	priv event_source_handle: Rc<bool>,
+	priv epoll_events: u32,
+	priv client_available: bool
+}
+
+impl events::EventSource for TcpServerSocket {
+	fn is_source_of(&self, event: &events::Event) -> bool {
+		if self.event_source_handle.borrow() as *bool == event.source.borrow() as *bool {true}
+		else { false }
+	}
+}
+
+impl TcpServerSocket {
+
+	pub fn from_raw_server_socket(raw_server_socket: RawTcpServerSocket, event_queue: &EventQueue) -> ~TcpServerSocket {
+		let mut socket = ~TcpServerSocket {
+			socket: raw_server_socket,
+			event_queue: event_queue._get_impl(),
+			process_func: TcpServerSocket::process_epoll_events,
+			event_source_handle: Rc::new(true),
+			epoll_events: 0,
+			client_available: false
+		};
+		if socket.socket.connection_state != Closed {
+			socket.register_fd();
+		}
+		socket
+	}
+
+	pub fn bind(addr: ip::SocketAddr, backlog: i32, event_queue: &EventQueue) -> IoResult<~TcpServerSocket> {
+		let sock = RawTcpServerSocket::bind(addr, backlog);
+		match sock {
+			Ok(sock) => {
+				Ok(TcpServerSocket::from_raw_server_socket(sock, event_queue))
+			},
+			Err(err) => Err(err)
+		}
+	}
+
+	pub fn close(&mut self) {
+		self.socket.close_socket();
+		self.remove_pending_events();
+	}
+
+	pub fn accept(&mut self) -> IoResult<RawTcpSocket> {
+		let state = self.socket.connection_state;
+		if (self.socket.connection_state == Connected 
+			&& !self.client_available) { // Currently no client available
+			Err(IoError{
+				kind: io::ResourceUnavailable,
+				desc: "No client available",
+				detail: None
+			})
+		}
+		else {
+			let ret = self.socket.accept();
+			match ret {
+				Ok(socket) => {
+					self.client_available = false;
+					Ok(socket)
+				}
+				Err(err) => {
+					if state != self.socket.connection_state
+					   && self.socket.connection_state == Closed {
+						self.remove_pending_events();
+					}
+					Err(err)
+				}
+			}
+		}
+	}
+
+	/**
+	 * Registers the fd for reading if it's connected or for writing on connects
+	 */
+	fn register_fd(&mut self) {
+		let callback: *libc::c_void = unsafe { cast::transmute(&self.process_func) };
+		self.event_queue.borrow().with_mut(|q| {
+			q.register_fd(self.socket.fd, syscalls::EPOLLIN, callback)
+		});
+	}
+
+	fn remove_pending_events(&mut self) {
+		self.event_queue.borrow().with_mut(|q|
+			q.remove_pending_events(
+				|ev|ev.source == self.event_source_handle)
+		);
+	}
+
+	fn process_epoll_events(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32) {
+		unsafe {
+			let sock: *mut TcpServerSocket = func_ptr as *mut TcpServerSocket;
+
+			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
+				let res = (*sock).socket.accept();
+				match res {
+					Ok(_) => fail!("There seems to be a logic in error in this socket implementation"),
+					Err(err) => {
+						let e = events::Event {
+							event_type: events::IoErrorEvent(err),
+							is_valid: true,
+							source: (*sock).event_source_handle.clone()
+						};
+						(*sock).socket.close_socket();
+						// There is no need to remove pending events
+						// because if there would be any this function
+						// wouldn't have been called
+						event_queue.ready_events.push_back(e);
+					}
+				}
+			}
+			else {
+				if epoll_events & syscalls::EPOLLIN != 0 {
+					(*sock).client_available = true;					
+					let e = events::Event {
+						event_type: events::ClientConnectedEvent,
+						is_valid: true,
+						source: (*sock).event_source_handle.clone()
+					};
+					event_queue.ready_events.push_back(e);
+				}
+			}
+		}
+	}
+}
+
+#[unsafe_destructor]
+impl Drop for TcpServerSocket {
+	fn drop(&mut self) {
+		self.remove_pending_events();
 	}
 }

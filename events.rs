@@ -19,7 +19,8 @@ pub enum EventKind
 	TimerEvent,
 	ChannelClosedEvent,
 	ChannelMessageEvent,
-	ConnectedEvent
+	ConnectedEvent,
+	ClientConnectedEvent
 }
 
 pub struct Event
