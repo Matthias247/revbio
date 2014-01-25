@@ -129,11 +129,7 @@ impl RawTcpSocket {
 			create_socket(addr, true).and_then(|fd| {
 				let (addr, len) = addr_to_sockaddr(addr);
 				let addrp = &addr as *libc::sockaddr_storage;
-				let ret = RawTcpSocket { 
-					fd: fd, 
-					blocking: true,
-					connection_state: Connected,
-					nc: NonCopyable };
+				let ret = RawTcpSocket::from_fd(fd);
 				match helpers::retry(|| {
 					libc::connect(fd, addrp as *libc::sockaddr,
 								  len as libc::socklen_t)
@@ -142,6 +138,15 @@ impl RawTcpSocket {
 					_ => Ok(ret),
 				}
 			})
+		}
+	}
+
+	fn from_fd(fd: i32) -> RawTcpSocket {
+		RawTcpSocket { 
+			fd: fd, 
+			blocking: true,
+			connection_state: Connected,
+			nc: NonCopyable
 		}
 	}
 
@@ -330,9 +335,9 @@ impl TcpSocket {
 		// Check if the the write caused an error/close
 		if state != self.socket.connection_state
 		   && self.socket.connection_state == Closed {
-		   	self.remove_pending_events();
-		   	// TODO: Should an unsuccessful write queue an error event?
-		   	// And should it really kill possible data to read?
+			self.remove_pending_events();
+			// TODO: Should an unsuccessful write queue an error event?
+			// And should it really kill possible data to read?
 		}
 		ret
 	}
@@ -353,7 +358,7 @@ impl TcpSocket {
 				Err(err) => {
 					if state != self.socket.connection_state
 					   && self.socket.connection_state == Closed {
-					   	self.remove_pending_events();
+						self.remove_pending_events();
 					}
 					Err(err)
 				}
@@ -397,9 +402,9 @@ impl TcpSocket {
 
 	fn remove_pending_events(&mut self) {
 		self.event_queue.borrow().with_mut(|q|
-	    	q.remove_pending_events(
-	    		|ev|ev.source == self.event_source_handle)
-	    );
+			q.remove_pending_events(
+				|ev|ev.source == self.event_source_handle)
+		);
 	}
 
 	fn process_epoll_events(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32) {
@@ -509,5 +514,82 @@ impl TcpSocket {
 impl Drop for TcpSocket {
 	fn drop(&mut self) {
 		self.remove_pending_events();
+	}
+}
+
+pub struct RawTcpServerSocket {
+	priv fd: i32,
+	priv connection_state: ConnectionState,
+}
+
+impl RawTcpServerSocket {
+	// TODO: Ipv6-only parameter
+	pub fn bind(addr: ip::SocketAddr, backlog: i32) -> IoResult<RawTcpServerSocket> {
+		unsafe {
+			create_socket(addr, true).and_then(|fd| {
+				let (addr, len) = addr_to_sockaddr(addr);
+				let addrp = &addr as *libc::sockaddr_storage;
+				let ret = RawTcpServerSocket { 
+					fd: fd,
+					connection_state: Connected,
+					};
+				match libc::bind(fd, addrp as *libc::sockaddr,
+								 len as libc::socklen_t) {
+					-1 => Err(helpers::last_error()),
+					_ => {
+						match libc::listen(fd, backlog) {
+							-1 => Err(helpers::last_error()),
+							_ => Ok(ret)
+						}
+					}
+				}
+			})
+		}
+	}
+
+	pub fn accept(&mut self) -> IoResult<RawTcpSocket> {
+		if self.connection_state != Connected {
+			return Err(IoError{
+				kind: io::Closed,
+				desc: "Socket is closed",
+				detail: None
+			});
+		}
+		unsafe {
+			let mut storage: libc::sockaddr_storage = intrinsics::init();
+			let storagep = &mut storage as *mut libc::sockaddr_storage;
+			let size = mem::size_of::<libc::sockaddr_storage>();
+			let mut size = size as libc::socklen_t;
+			match helpers::retry(|| {
+				libc::accept(self.fd,
+							 storagep as *mut libc::sockaddr,
+							 &mut size as *mut libc::socklen_t) as libc::c_int
+			}) {
+				-1 => {
+					let errno = os::errno() as int;
+					if (errno != libc::EWOULDBLOCK as int && errno != libc::EAGAIN as int) {
+						self.close_socket();
+					}
+					Err(helpers::last_error())
+				},
+				fd => Ok(RawTcpSocket::from_fd(fd))
+			}
+		}
+	}
+
+	fn close_socket(&mut self) {
+		if self.connection_state == Closed { return; }
+		self.connection_state = Closed;
+		unsafe { libc::close(self.fd); }
+	}
+
+	pub fn close(&mut self) {
+		self.close_socket();
+	}
+}
+
+impl Drop for RawTcpServerSocket {
+	fn drop(&mut self) {
+		self.close_socket();
 	}
 }
