@@ -46,7 +46,7 @@ impl <T:Send> Channel<T> {
 	pub fn create_blocking() -> (BlockingReceiver<T>, Transmitter<T>) {
 		let shared_data: UnsafeArc<SharedChannelData<T>> 
 			= UnsafeArc::new(SharedChannelData {
-				queue: RingBuf::new(),//~[],
+				queue: RingBuf::new(),
 				mutex: unsafe { Mutex::new() },
 				port_alive: true,
 				receiver_notified: false,
@@ -71,7 +71,7 @@ impl<T:Send> BlockingReceiver<T> {
 				(*data).mutex.wait();
 			}
 			if (*data).queue.len() > 0 {
-				let ret = (*data).queue.pop_front().unwrap();// (*data).queue.shift();
+				let ret = (*data).queue.pop_front().unwrap();
 				(*data).receiver_notified = false;
 				(*data).mutex.unlock();
 				ret
@@ -93,7 +93,6 @@ impl<T:Send> BlockingReceiver<T> {
 			}
 			if (*data).queue.len() > 0 {
 				ret = Some((*data).queue.pop_front().unwrap());
-				//ret = Some((*data).queue.shift());
 			}
 			(*data).receiver_notified = false;
 			(*data).mutex.unlock();
@@ -107,7 +106,6 @@ impl<T:Send> BlockingReceiver<T> {
 		unsafe {
 			(*data).mutex.lock();
 			if (*data).queue.len() >= 1 {
-				//ret = Data((*data).queue.shift());
 				ret = Data((*data).queue.pop_front().unwrap());
 			}
 			else if (*data).nr_senders == 0 {
@@ -237,19 +235,18 @@ impl<T:Send> Receiver<T> {
 				);
 
 				if ret == 8 { // Must be 8 bytes
-					let value: *u64 = cast::transmute(&buffer);	
-					// TODO: This might actually produce too many
-					// events. Check out once more				
+					let value: *u64 = cast::transmute(&buffer);
 					if *value == 1 {
 						(*data).mutex.lock();
-						for _ in range(0, (*data).queue.len()) {
+						let new_messages = (*data).queue.len() - (*receiver).available_messages;
+						(*receiver).available_messages += (*data).queue.len();
+						for _ in range(0, new_messages) {
 							let e = events::Event {
 								event_type: events::ChannelMessageEvent,
 								is_valid: true,
 								source: (*receiver).event_source_handle.clone()
 							};
 							event_queue.ready_events.push_back(e);
-							(*receiver).available_messages += 1;
 						}
 						if (*data).nr_senders == 0 {
 							let e = events::Event {
