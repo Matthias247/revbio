@@ -157,4 +157,21 @@ pub static F_SETFL: i32 = 4;	/* Set file status flags.  */
 pub static SOCK_CLOEXEC: i32 = 0x80000;	/* Atomically set close-on-exec flag for the new descriptor(s).  */
 pub static SOCK_NONBLOCK: i32 = 0x800; /* Atomically mark descriptor(s) as non-blocking.  */
 
-pub static SO_ERROR: i32 = 4;
+// Socket options
+pub static SO_DEBUG: i32 = 1;
+pub static SO_REUSEADDR: i32 = 2;
+pub static SO_TYPE: i32 = 3;
+pub static SO_ERROR	: i32 = 4;
+pub static SO_DONTROUTE: i32 = 5;
+pub static SO_BROADCAST: i32 = 6;
+pub static SO_SNDBUF: i32 = 7;
+pub static SO_RCVBUF: i32 = 8;
+pub static SO_SNDBUFFORCE: i32 = 32;
+pub static SO_RCVBUFFORCE: i32 = 33;
+pub static SO_KEEPALIVE: i32 = 9;
+pub static SO_OOBINLINE: i32 = 10;
+pub static SO_NO_CHECK: i32 = 11;
+pub static SO_PRIORITY: i32 = 12;
+pub static SO_LINGER: i32 = 13;
+pub static SO_BSDCOMPAT: i32 = 14;
+pub static SO_REUSEPORT: i32 = 15;

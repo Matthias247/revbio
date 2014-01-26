@@ -530,6 +530,16 @@ impl RawTcpServerSocket {
 					fd: fd,
 					connection_state: Connected,
 					};
+				let reuse: libc::c_int = 1;
+				// Set SO_REUSEADDR
+				let opt = libc::setsockopt(fd, libc::SOL_SOCKET, 
+				                           syscalls::SO_REUSEADDR,
+				                           &reuse as *libc::c_int as *libc::c_void,
+				                           mem::size_of::<libc::c_int>() as libc::socklen_t);
+				if opt == -1 {
+					return Err(helpers::last_error());
+				}
+				// Bind the socket
 				match libc::bind(fd, addrp as *libc::sockaddr,
 								 len as libc::socklen_t) {
 					-1 => Err(helpers::last_error()),
