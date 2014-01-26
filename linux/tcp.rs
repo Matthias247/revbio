@@ -409,22 +409,28 @@ impl TcpSocket {
 			let sock: *mut TcpSocket = func_ptr as *mut TcpSocket;
 
 			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
-				let mut resBuffer = [0, ..0]; // TODO: This gives false positives
-				let res = (*sock).socket.read(resBuffer);
-				match res {
-					Ok(_) => fail!("There seems to be a logic in error in this socket implementation"),
-					Err(err) => {
-						let e = events::Event {
-							event_type: events::IoErrorEvent(err),
-							is_valid: true,
-							source: (*sock).event_source_handle.clone()
-						};
-						(*sock).socket.close_socket();
-						// There is no need to remove pending events
-						// because if there would be any this function
-						// wouldn't have been called
-						event_queue.ready_events.push_back(e);
-					}
+				let errno: libc::c_int = 0;
+				let outlen: libc::socklen_t = mem::size_of::<libc::c_int>() as libc::socklen_t;
+				let ret = syscalls::getsockopt(
+					(*sock).socket.fd, libc::SOL_SOCKET, syscalls::SO_ERROR,
+					&errno as *libc::c_int as *libc::c_void,
+					&outlen as *libc::socklen_t);
+				// Read and evaluate the error
+				if ret != -1 {
+					let err = helpers::translate_error(errno, false);
+					let e = events::Event {
+						event_type: events::IoErrorEvent(err),
+						is_valid: true,
+						source: (*sock).event_source_handle.clone()
+					};
+					(*sock).socket.close_socket();
+					// There is no need to remove pending events
+					// because if there would be any this function
+					// wouldn't have been called
+					event_queue.ready_events.push_back(e);
+				}
+				else {
+					fail!("Could not retrieve error");
 				}
 			}
 			else {
@@ -699,21 +705,28 @@ impl TcpServerSocket {
 			let sock: *mut TcpServerSocket = func_ptr as *mut TcpServerSocket;
 
 			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
-				let res = (*sock).socket.accept();
-				match res {
-					Ok(_) => fail!("There seems to be a logic in error in this socket implementation"),
-					Err(err) => {
-						let e = events::Event {
-							event_type: events::IoErrorEvent(err),
-							is_valid: true,
-							source: (*sock).event_source_handle.clone()
-						};
-						(*sock).socket.close_socket();
-						// There is no need to remove pending events
-						// because if there would be any this function
-						// wouldn't have been called
-						event_queue.ready_events.push_back(e);
-					}
+				let errno: libc::c_int = 0;
+				let outlen: libc::socklen_t = mem::size_of::<libc::c_int>() as libc::socklen_t;
+				let ret = syscalls::getsockopt(
+					(*sock).socket.fd, libc::SOL_SOCKET, syscalls::SO_ERROR,
+					&errno as *libc::c_int as *libc::c_void,
+					&outlen as *libc::socklen_t);
+				// Read and evaluate the error
+				if ret != -1 {
+					let err = helpers::translate_error(errno, false);
+					let e = events::Event {
+						event_type: events::IoErrorEvent(err),
+						is_valid: true,
+						source: (*sock).event_source_handle.clone()
+					};
+					(*sock).socket.close_socket();
+					// There is no need to remove pending events
+					// because if there would be any this function
+					// wouldn't have been called
+					event_queue.ready_events.push_back(e);
+				}
+				else {
+					fail!("Could not retrieve error");
 				}
 			}
 			else {
