@@ -246,14 +246,14 @@ pub struct TcpSocket {
 	priv process_func: fn(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32),
 	priv socket: RawTcpSocket,
 	priv event_queue: Rc<RefCell<EventQueueImpl>>,
-	priv event_source_id: events::EventSourceId,
+	priv event_source_info: Rc<events::EventSourceInfo>,
 	priv epoll_events: u32,
 	priv available_bytes: uint
 }
 
 impl events::EventSource for TcpSocket {
-	fn get_event_source_id<'a>(&'a self) -> &'a events::EventSourceId {
-		&self.event_source_id
+	fn get_event_source_info<'a>(&'a self) -> &'a Rc<events::EventSourceInfo> {
+		&self.event_source_info
 	}
 }
 
@@ -264,7 +264,7 @@ impl TcpSocket {
 			socket: raw_tcp_socket,
 			event_queue: event_queue._get_impl(),
 			process_func: TcpSocket::process_epoll_events,
-			event_source_id: events::EventSourceId::new(),
+			event_source_info: Rc::new(events::EventSourceInfo::new()),
 			epoll_events: 0,
 			available_bytes: 0
 		};
@@ -308,7 +308,7 @@ impl TcpSocket {
 							let evt = events::Event {
 								event_type: events::ConnectedEvent,
 								is_valid: true,
-								source: ret.event_source_id.clone()
+								source_info: ret.event_source_info.clone()
 							};
 							eq.push_back_event(evt); 
 						});
@@ -398,7 +398,7 @@ impl TcpSocket {
 	fn remove_pending_events(&mut self) {
 		self.event_queue.borrow().with_mut(|q|
 			q.remove_pending_events(
-				|ev|ev.source == self.event_source_id)
+				|ev|ev.originates_from(self))
 		);
 	}
 
@@ -419,7 +419,7 @@ impl TcpSocket {
 					let e = events::Event {
 						event_type: events::IoErrorEvent(err),
 						is_valid: true,
-						source: (*sock).event_source_id.clone()
+						source_info: (*sock).event_source_info.clone()
 					};
 					(*sock).socket.close_socket();
 					// There is no need to remove pending events
@@ -443,14 +443,14 @@ impl TcpSocket {
 							let e = events::Event {
 								event_type: events::DataAvailableEvent((*sock).available_bytes),
 								is_valid: true,
-								source: (*sock).event_source_id.clone()
+								source_info: (*sock).event_source_info.clone()
 							};
 							event_queue.push_back_event(e);
 						} else {
 							let e = events::Event {
 								event_type: events::StreamClosedEvent,
 								is_valid: true,
-								source: (*sock).event_source_id.clone()
+								source_info: (*sock).event_source_info.clone()
 							};
 							(*sock).socket.close_socket();
 							event_queue.push_back_event(e);
@@ -486,7 +486,7 @@ impl TcpSocket {
 							let e = events::Event {
 								event_type: events::IoErrorEvent(err),
 								is_valid: true,
-								source: (*sock).event_source_id.clone()
+								source_info: (*sock).event_source_info.clone()
 							};
 							(*sock).socket.close_socket();
 							event_queue.push_back_event(e);
@@ -497,7 +497,7 @@ impl TcpSocket {
 							let e = events::Event {
 								event_type: events::ConnectedEvent,
 								is_valid: true,
-								source: (*sock).event_source_id.clone()
+								source_info: (*sock).event_source_info.clone()
 							};							
 							let callback: *libc::c_void = cast::transmute(&(*sock).process_func);
 							// Switch interest to EPOLLIN
@@ -609,14 +609,14 @@ pub struct TcpServerSocket {
 	priv process_func: fn(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32),
 	priv socket: RawTcpServerSocket,
 	priv event_queue: Rc<RefCell<EventQueueImpl>>,
-	priv event_source_id: events::EventSourceId,
+	priv event_source_info: Rc<events::EventSourceInfo>,
 	priv epoll_events: u32,
 	priv client_available: bool
 }
 
 impl events::EventSource for TcpServerSocket {
-	fn get_event_source_id<'a>(&'a self) -> &'a events::EventSourceId {
-		&self.event_source_id
+	fn get_event_source_info<'a>(&'a self) -> &'a Rc<events::EventSourceInfo> {
+		&self.event_source_info
 	}
 }
 
@@ -627,7 +627,7 @@ impl TcpServerSocket {
 			socket: raw_server_socket,
 			event_queue: event_queue._get_impl(),
 			process_func: TcpServerSocket::process_epoll_events,
-			event_source_id: events::EventSourceId::new(),
+			event_source_info: Rc::new(events::EventSourceInfo::new()),
 			epoll_events: 0,
 			client_available: false
 		};
@@ -693,7 +693,7 @@ impl TcpServerSocket {
 	fn remove_pending_events(&mut self) {
 		self.event_queue.borrow().with_mut(|q|
 			q.remove_pending_events(
-				|ev|ev.source == self.event_source_id)
+				|ev|ev.originates_from(self))
 		);
 	}
 
@@ -714,7 +714,7 @@ impl TcpServerSocket {
 					let e = events::Event {
 						event_type: events::IoErrorEvent(err),
 						is_valid: true,
-						source: (*sock).event_source_id.clone()
+						source_info: (*sock).event_source_info.clone()
 					};
 					(*sock).socket.close_socket();
 					// There is no need to remove pending events
@@ -732,7 +732,7 @@ impl TcpServerSocket {
 					let e = events::Event {
 						event_type: events::ClientConnectedEvent,
 						is_valid: true,
-						source: (*sock).event_source_id.clone()
+						source_info: (*sock).event_source_info.clone()
 					};
 					event_queue.push_back_event(e);
 				}

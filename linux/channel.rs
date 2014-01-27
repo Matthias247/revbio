@@ -142,14 +142,14 @@ pub struct Receiver<T> {
 	priv process_func: fn(func_ptr: *libc::c_void, event_queue: &mut EventQueueImpl, epoll_events: u32),
 	priv receiver: BlockingReceiver<T>,
 	priv event_queue: Rc<RefCell<EventQueueImpl>>,
-	priv event_source_id: events::EventSourceId,
+	priv event_source_info: Rc<events::EventSourceInfo>,
 	priv epoll_events: u32,
 	priv available_messages: uint
 }
 
 impl<T> events::EventSource for Receiver<T> {
-	fn get_event_source_id<'a>(&'a self) -> &'a events::EventSourceId {
-		&self.event_source_id
+	fn get_event_source_info<'a>(&'a self) -> &'a Rc<events::EventSourceInfo> {
+		&self.event_source_info
 	}
 }
 
@@ -159,7 +159,7 @@ impl<T:Send> Receiver<T> {
 			receiver: blocking_receiver,
 			event_queue: event_queue._get_impl(),
 			process_func: Receiver::<T>::process_epoll_events,
-			event_source_id: events::EventSourceId::new(),
+			event_source_info: Rc::new(events::EventSourceInfo::new()),
 			epoll_events: 0,
 			available_messages: 0
 		};
@@ -199,7 +199,7 @@ impl<T:Send> Receiver<T> {
 					q.push_back_event(events::Event{
 						event_type: events::ChannelClosedEvent,
 						is_valid: true,
-						source: receiver.event_source_id.clone()
+						source_info: receiver.event_source_info.clone()
 					})
 				);
 			}
@@ -244,7 +244,7 @@ impl<T:Send> Receiver<T> {
 							let e = events::Event {
 								event_type: events::ChannelMessageEvent,
 								is_valid: true,
-								source: (*receiver).event_source_id.clone()
+								source_info: (*receiver).event_source_info.clone()
 							};
 							event_queue.push_back_event(e);
 						}
@@ -252,7 +252,7 @@ impl<T:Send> Receiver<T> {
 							let e = events::Event {
 								event_type: events::ChannelClosedEvent,
 								is_valid: true,
-								source: (*receiver).event_source_id.clone()
+								source_info: (*receiver).event_source_info.clone()
 							};
 							event_queue.push_back_event(e);
 						}
@@ -266,9 +266,9 @@ impl<T:Send> Receiver<T> {
 
 	fn remove_pending_events(&mut self) {
 		self.event_queue.borrow().with_mut(|q|
-	    	q.remove_pending_events(
-	    		|ev|ev.source == self.event_source_id)
-	    );
+			q.remove_pending_events(
+				|ev|ev.originates_from(self))
+		);
 	}
 }
 

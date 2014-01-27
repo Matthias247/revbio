@@ -29,7 +29,7 @@ pub struct Timer {
 	priv singleshot: bool,
 	priv epoll_registered: bool,
 	priv event_queue: Rc<RefCell<EventQueueImpl>>,
-	priv event_source_id: events::EventSourceId
+	priv event_source_info: Rc<events::EventSourceInfo>
 }
 
 impl Timer {
@@ -49,7 +49,7 @@ impl Timer {
 				epoll_registered: false,
 				event_queue: event_queue._get_impl(),
 				process_func: Timer::process_epoll_events,
-				event_source_id: events::EventSourceId::new()
+				event_source_info: Rc::new(events::EventSourceInfo::new())
 			})
 		}
 	}
@@ -152,7 +152,7 @@ impl Timer {
 						let e = events::Event {
 							event_type: events::TimerEvent,
 							is_valid: true,
-							source: (*timer).event_source_id.clone()
+							source_info: (*timer).event_source_info.clone()
 						};
 						event_queue.push_back_event(e);
 						// Set timer to inactive when it was a singleshot
@@ -167,9 +167,9 @@ impl Timer {
 
 	fn remove_pending_events(&mut self) {
 		self.event_queue.borrow().with_mut(|q|
-	    	q.remove_pending_events(
-	    		|ev|ev.source == self.event_source_id)
-	    );
+			q.remove_pending_events(
+				|ev|ev.originates_from(self))
+		);
 	}
 }
 
@@ -186,7 +186,7 @@ impl Drop for Timer {
 }
 
 impl events::EventSource for Timer {
-	fn get_event_source_id<'a>(&'a self) -> &'a events::EventSourceId {
-		&self.event_source_id
+	fn get_event_source_info<'a>(&'a self) -> &'a Rc<events::EventSourceInfo> {
+		&self.event_source_info
 	}
 }
