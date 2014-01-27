@@ -32,7 +32,7 @@ pub struct Event
 
 impl Event {
 	pub fn originates_from<T:EventSource>(&self, source: &T) -> bool{
-		return source.is_source_of(self);
+		*source.get_event_source_id() == self.source
 	}
 }
 
@@ -71,5 +71,5 @@ impl Clone for EventSourceId {
  */
 pub trait EventSource
 {
-	fn is_source_of(&self, event: &Event) -> bool;
+	fn get_event_source_id<'a>(&'a self) -> &'a EventSourceId;
 }

@@ -186,8 +186,7 @@ impl Drop for Timer {
 }
 
 impl events::EventSource for Timer {
-	fn is_source_of(&self, event: &events::Event) -> bool {
-		if self.event_source_id == event.source {true}
-		else { false }
+	fn get_event_source_id<'a>(&'a self) -> &'a events::EventSourceId {
+		&self.event_source_id
 	}
 }
