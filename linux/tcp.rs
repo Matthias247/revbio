@@ -20,11 +20,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::unstable::intrinsics;
 use std::util::NonCopyable;
-use extra::container::Deque;
 
 use super::IoResult;
 use super::events;
 use super::eventqueue::EventQueue;
+use super::eventqueue::IEventQueue;
 use super::eventqueueimpl::EventQueueImpl;
 use super::syscalls;
 use super::helpers;
@@ -302,7 +302,6 @@ impl TcpSocket {
 						}
 					},
 					_ => { // Strangely we were connected synchronously
-						println!("Direct connect");
 						rawsock.connection_state = Connected;
 						rawsock.set_blocking(true);
 						let ret = TcpSocket::from_raw_tcp_socket(rawsock, event_queue);
@@ -312,7 +311,7 @@ impl TcpSocket {
 								is_valid: true,
 								source: ret.event_source_id.clone()
 							};
-							eq.ready_events.push_back(evt); 
+							eq.push_back_event(evt); 
 						});
 						Ok(ret)
 					}
@@ -427,7 +426,7 @@ impl TcpSocket {
 					// There is no need to remove pending events
 					// because if there would be any this function
 					// wouldn't have been called
-					event_queue.ready_events.push_back(e);
+					event_queue.push_back_event(e);
 				}
 				else {
 					fail!("Could not retrieve error");
@@ -447,7 +446,7 @@ impl TcpSocket {
 								is_valid: true,
 								source: (*sock).event_source_id.clone()
 							};
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						} else {
 							let e = events::Event {
 								event_type: events::StreamClosedEvent,
@@ -455,7 +454,7 @@ impl TcpSocket {
 								source: (*sock).event_source_id.clone()
 							};
 							(*sock).socket.close_socket();
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						}
 					}
 					// Currently not used
@@ -491,7 +490,7 @@ impl TcpSocket {
 								source: (*sock).event_source_id.clone()
 							};
 							(*sock).socket.close_socket();
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						}
 						else { // Connect was successful
 							(*sock).socket.set_blocking(true);
@@ -504,7 +503,7 @@ impl TcpSocket {
 							let callback: *libc::c_void = cast::transmute(&(*sock).process_func);
 							// Switch interest to EPOLLIN
 							event_queue.modify_fd((*sock).socket.fd, syscalls::EPOLLIN, callback);							
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						}
 					}
 				}
@@ -723,7 +722,7 @@ impl TcpServerSocket {
 					// There is no need to remove pending events
 					// because if there would be any this function
 					// wouldn't have been called
-					event_queue.ready_events.push_back(e);
+					event_queue.push_back_event(e);
 				}
 				else {
 					fail!("Could not retrieve error");
@@ -737,7 +736,7 @@ impl TcpServerSocket {
 						is_valid: true,
 						source: (*sock).event_source_id.clone()
 					};
-					event_queue.ready_events.push_back(e);
+					event_queue.push_back_event(e);
 				}
 			}
 		}

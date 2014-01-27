@@ -14,6 +14,7 @@ use std::util::NonCopyable;
 use extra::ringbuf::RingBuf;
 use extra::container::Deque;
 
+use super::eventqueue::IEventQueue;
 use super::events;
 use super::IoResult;
 use super::syscalls;
@@ -21,8 +22,19 @@ use super::helpers;
 
 pub struct EventQueueImpl {
 	priv fd: i32, // epoll fd,
-	ready_events: RingBuf<events::Event>,
+	priv ready_events: RingBuf<events::Event>,
 	priv nc: NonCopyable
+}
+
+impl IEventQueue for EventQueueImpl {
+	#[inline]
+	fn push_back_event(&mut self, event: events::Event) {
+		self.ready_events.push_back(event);
+	}
+	#[inline]
+	fn push_front_event(&mut self, event: events::Event) {
+		self.ready_events.push_front(event);
+	}
 }
 
 impl EventQueueImpl {

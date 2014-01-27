@@ -12,11 +12,11 @@ use std::cast;
 use std::libc;
 use std::cell::RefCell;
 use std::rc::Rc;
-use extra::container::Deque;
 
 use super::events;
 use super::IoResult;
 use super::eventqueue;
+use super::eventqueue::IEventQueue;
 use super::eventqueueimpl::EventQueueImpl;
 use super::syscalls;
 use super::helpers;
@@ -154,7 +154,7 @@ impl Timer {
 							is_valid: true,
 							source: (*timer).event_source_id.clone()
 						};
-						event_queue.ready_events.push_back(e);
+						event_queue.push_back_event(e);
 						// Set timer to inactive when it was a singleshot
 						if (*timer).singleshot {
 							(*timer).is_active = false;

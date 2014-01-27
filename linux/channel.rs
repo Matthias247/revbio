@@ -19,6 +19,7 @@ use extra::container::Deque;
 
 use super::events;
 use super::eventqueue::EventQueue;
+use super::eventqueue::IEventQueue;
 use super::eventqueueimpl::EventQueueImpl;
 use super::syscalls;
 use super::helpers;
@@ -196,7 +197,7 @@ impl<T:Send> Receiver<T> {
 			}
 			else {
 				receiver.event_queue.borrow().with_mut(|q|
-					q.ready_events.push_back(events::Event{
+					q.push_back_event(events::Event{
 						event_type: events::ChannelClosedEvent,
 						is_valid: true,
 						source: receiver.event_source_id.clone()
@@ -246,7 +247,7 @@ impl<T:Send> Receiver<T> {
 								is_valid: true,
 								source: (*receiver).event_source_id.clone()
 							};
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						}
 						if (*data).nr_senders == 0 {
 							let e = events::Event {
@@ -254,7 +255,7 @@ impl<T:Send> Receiver<T> {
 								is_valid: true,
 								source: (*receiver).event_source_id.clone()
 							};
-							event_queue.ready_events.push_back(e);
+							event_queue.push_back_event(e);
 						}
 						(*data).receiver_notified = false;
 						(*data).mutex.unlock();

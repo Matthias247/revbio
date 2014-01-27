@@ -34,3 +34,21 @@ impl EventQueue {
 		self.queue.borrow().with_mut(|ev_queue|ev_queue.next_event())
 	}
 }
+
+pub trait IEventQueue {
+	fn push_back_event(&mut self, event: events::Event);
+	fn push_front_event(&mut self, event: events::Event);
+}
+
+impl IEventQueue for EventQueue {
+	#[inline]
+	fn push_back_event(&mut self, event: events::Event) {
+		let mut refmut = self.queue.borrow().borrow_mut();
+		refmut.get().push_back_event(event);
+	}
+	#[inline]
+	fn push_front_event(&mut self, event: events::Event) {
+		let mut refmut = self.queue.borrow().borrow_mut();
+		refmut.get().push_front_event(event);
+	}
+}

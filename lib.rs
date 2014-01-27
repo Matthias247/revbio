@@ -20,7 +20,6 @@ extern mod extra;
 
 use std::io::IoError;
 
-pub use timer::Timer;
 pub use eventqueue::EventQueue;
 
 pub mod events;
@@ -57,6 +56,5 @@ pub mod tcp;
 #[path="linux/channel.rs"]
 pub mod channel;
 
-
-
-type IoResult<T> = Result<T, IoError>;
+/// Holds either the success value of an IO operation or an error
+pub type IoResult<T> = Result<T, IoError>;
