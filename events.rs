@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::io::IoError;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 pub enum EventKind
 {
@@ -45,14 +45,16 @@ impl Event {
  * an event
  */
 pub struct EventSourceInfo {
-	priv id: bool
+	priv id: bool,
+	priv processor: Option<Weak<~EventProcessor>>
 	// More to come
 }
 
 impl EventSourceInfo {
 	pub fn new() -> EventSourceInfo {
 		EventSourceInfo {
-			id: true
+			id: true,
+			processor: None
 		}
 	}
 }
@@ -60,7 +62,8 @@ impl EventSourceInfo {
 impl Clone for EventSourceInfo {
 	fn clone(&self) -> EventSourceInfo {
 		EventSourceInfo {
-			id: self.id
+			id: self.id,
+			processor: self.processor.clone()
 		}
 	}
 }
@@ -71,4 +74,9 @@ impl Clone for EventSourceInfo {
 pub trait EventSource
 {
 	fn get_event_source_info<'a>(&'a self) -> &'a Rc<EventSourceInfo>;
+}
+
+pub trait EventProcessor
+{
+	fn process_event(event: &Event);
 }

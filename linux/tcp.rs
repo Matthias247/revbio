@@ -19,7 +19,6 @@ use std::io::net::ip::{IpAddr,SocketAddr};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::unstable::intrinsics;
-use std::util::NonCopyable;
 
 use super::IoResult;
 use super::events;
@@ -119,8 +118,7 @@ pub enum ConnectionState {
 pub struct RawTcpSocket {
 	priv fd: i32,
 	priv blocking: bool,
-	priv connection_state: ConnectionState,
-	priv nc: NonCopyable
+	priv connection_state: ConnectionState
 }
 
 impl RawTcpSocket {
@@ -145,8 +143,7 @@ impl RawTcpSocket {
 		RawTcpSocket { 
 			fd: fd, 
 			blocking: true,
-			connection_state: Connected,
-			nc: NonCopyable
+			connection_state: Connected
 		}
 	}
 
@@ -192,7 +189,7 @@ impl RawTcpSocket {
 
 		if ret < 0 {
 			let errno = os::errno() as int;
-			if (errno != libc::EWOULDBLOCK as int && errno != libc:: EAGAIN as int) {
+			if errno != libc::EWOULDBLOCK as int && errno != libc:: EAGAIN as int {
 				self.close_socket();
 			}
 			Err(helpers::last_error())
@@ -226,7 +223,7 @@ impl RawTcpSocket {
 		} 
 		else if ret < 0 {
 			let errno = os::errno() as int;
-			if (errno != libc::EWOULDBLOCK as int && errno != libc:: EAGAIN as int) {
+			if errno != libc::EWOULDBLOCK as int && errno != libc:: EAGAIN as int {
 				self.close_socket();
 			}
 			Err(helpers::last_error())
@@ -282,8 +279,7 @@ impl TcpSocket {
 				let mut rawsock = RawTcpSocket { 
 					fd: fd, 
 					blocking: false,
-					connection_state: Created,
-					nc: NonCopyable };
+					connection_state: Created };
 				match helpers::retry(|| {
 					libc::connect(fd, addrp as *libc::sockaddr,
 								  len as libc::socklen_t)
@@ -339,8 +335,8 @@ impl TcpSocket {
 
 	pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
 		let state = self.socket.connection_state;
-		if (self.socket.connection_state == Connected 
-			&& self.available_bytes == 0) {
+		if self.socket.connection_state == Connected 
+			&& self.available_bytes == 0 {
 			Ok(0)
 		}
 		else {
@@ -406,7 +402,7 @@ impl TcpSocket {
 		unsafe {
 			let sock: *mut TcpSocket = func_ptr as *mut TcpSocket;
 
-			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
+			if epoll_events & syscalls::EPOLLERR != 0 { // Read the error
 				let errno: libc::c_int = 0;
 				let outlen: libc::socklen_t = mem::size_of::<libc::c_int>() as libc::socklen_t;
 				let ret = syscalls::getsockopt(
@@ -433,8 +429,8 @@ impl TcpSocket {
 			}
 			else {
 				if (*sock).socket.connection_state == Connected {
-					if ((epoll_events & syscalls::EPOLLIN != 0) || (epoll_events & syscalls::EPOLLERR != 0)) {
-						if (epoll_events & syscalls::EPOLLHUP == 0) {
+					if (epoll_events & syscalls::EPOLLIN != 0) || (epoll_events & syscalls::EPOLLERR != 0) {
+						if epoll_events & syscalls::EPOLLHUP == 0 {
 							(*sock).read_available_bytes();
 						} else {
 							(*sock).available_bytes = 0;
@@ -461,7 +457,7 @@ impl TcpSocket {
 					}*/
 				}
 				else { // Connecting
-					if (epoll_events & syscalls::EPOLLOUT != 0) {
+					if epoll_events & syscalls::EPOLLOUT != 0 {
 						
 						let out: libc::c_int = 0;
 						let outlen: libc::socklen_t = mem::size_of::<libc::c_int>() as libc::socklen_t;
@@ -578,7 +574,7 @@ impl RawTcpServerSocket {
 			}) {
 				-1 => {
 					let errno = os::errno() as int;
-					if (errno != libc::EWOULDBLOCK as int && errno != libc::EAGAIN as int) {
+					if errno != libc::EWOULDBLOCK as int && errno != libc::EAGAIN as int {
 						self.close_socket();
 					}
 					Err(helpers::last_error())
@@ -654,8 +650,8 @@ impl TcpServerSocket {
 
 	pub fn accept(&mut self) -> IoResult<RawTcpSocket> {
 		let state = self.socket.connection_state;
-		if (self.socket.connection_state == Connected 
-			&& !self.client_available) { // Currently no client available
+		if self.socket.connection_state == Connected 
+			&& !self.client_available { // Currently no client available
 			Err(IoError{
 				kind: io::ResourceUnavailable,
 				desc: "No client available",
@@ -701,7 +697,7 @@ impl TcpServerSocket {
 		unsafe {
 			let sock: *mut TcpServerSocket = func_ptr as *mut TcpServerSocket;
 
-			if (epoll_events & syscalls::EPOLLERR != 0) { // Read the error
+			if epoll_events & syscalls::EPOLLERR != 0 { // Read the error
 				let errno: libc::c_int = 0;
 				let outlen: libc::socklen_t = mem::size_of::<libc::c_int>() as libc::socklen_t;
 				let ret = syscalls::getsockopt(

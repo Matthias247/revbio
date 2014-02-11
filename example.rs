@@ -13,9 +13,9 @@ use revbio::tcp::{TcpSocket};
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-	do native::start(argc, argv) {
+	native::start(argc, argv, proc() {
 		main();
-	}
+	})
 }
 
 fn main() {
@@ -26,9 +26,9 @@ fn main() {
 	main_timer.set_interval(2000);	
 	main_timer.start();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		subtask(tx);
-	}
+	});
 
 	loop {
 		let event = ev_queue.next_event().unwrap();			
@@ -116,7 +116,9 @@ fn subtask(tx: Transmitter<~str>) {
 						}
 						Ok(nr_read) => {
 							let txt = std::str::from_utf8(buffer.slice(0, nr_read));
-							tx.send(txt.to_owned());
+							if txt.is_some() {
+								tx.send(txt.unwrap().to_owned());
+							}
 						}
 					}
 				},

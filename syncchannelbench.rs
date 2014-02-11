@@ -11,9 +11,9 @@ use revbio::{EventQueue};
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-	do native::start(argc, argv) {
+	native::start(argc, argv, proc() {
 		bench_conditions_main();
-	}
+	})
 }
 
 fn timediff(start: time::Timespec, end: time::Timespec) -> f64 {
@@ -39,12 +39,12 @@ fn bench_conditions_main() {
 	let (rport,rchan): (Port<i32>, Chan<i32>) = Chan::new();
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		for _ in range(0,ITERATIONS) {
 			rport.recv();
 			chan.send(0);
 		}
-	}
+	});
 
 	for _ in range(0,ITERATIONS) {
 		rchan.send(0);
@@ -61,12 +61,12 @@ fn bench_conditions_main() {
 
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		for _ in range(0,ITERATIONS) {
 			rrx.recv();
 			tx.send(0);
 		}
-	}
+	});
 
 	for _ in range(0,ITERATIONS) {
 		rtx.send(0);
@@ -85,7 +85,7 @@ fn bench_conditions_main() {
 	let mut nr_received = 0u32;
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		let mut rev = EventQueue::new();
 		let mut rselport = Receiver::from_blocking_receiver(rrx, &rev);
 		for _ in range(0,ITERATIONS) {
@@ -93,7 +93,7 @@ fn bench_conditions_main() {
 			rselport.recv();
 			tx.send(0);
 		}
-	}
+	});
 
 	loop {
 		rtx.send(0);

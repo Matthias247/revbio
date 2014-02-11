@@ -43,8 +43,7 @@ pub trait IEventQueue {
 impl IEventQueue for EventQueue {
 	#[inline]
 	fn push_back_event(&mut self, event: events::Event) {
-		let mut refmut = self.queue.borrow().borrow_mut();
-		refmut.get().push_back_event(event);
+		self.queue.borrow().borrow_mut().get().push_back_event(event);
 	}
 	#[inline]
 	fn push_front_event(&mut self, event: events::Event) {

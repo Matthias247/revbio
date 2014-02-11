@@ -139,7 +139,7 @@ extern {
 pub fn set_fd_blocking(fd: i32, blocking: bool) {
 	unsafe {
 		let mut flags = fcntl(fd, F_GETFL, 0);
-		if (blocking) {
+		if blocking {
 			flags = flags & !O_NONBLOCK;
 		}
 		else {

@@ -68,7 +68,7 @@ impl<T:Send> BlockingReceiver<T> {
 		let data = self.data.get();
 		unsafe {
 			(*data).mutex.lock();
-			while (((*data).queue.len() < 1) && ((*data).nr_senders != 0)) {
+			while ((*data).queue.len() < 1) && ((*data).nr_senders != 0) {
 				(*data).mutex.wait();
 			}
 			if (*data).queue.len() > 0 {
@@ -89,7 +89,7 @@ impl<T:Send> BlockingReceiver<T> {
 		let mut ret = None;
 		unsafe {
 			(*data).mutex.lock();
-			while (((*data).queue.len() < 1) && ((*data).nr_senders != 0)) {
+			while ((*data).queue.len() < 1) && ((*data).nr_senders != 0) {
 				(*data).mutex.wait();
 			}
 			if (*data).queue.len() > 0 {
@@ -225,7 +225,7 @@ impl<T:Send> Receiver<T> {
 			let receiver: *mut Receiver<T> = func_ptr as *mut Receiver<T>;
 			let data = (*receiver).receiver.data.get();
 
-			if (epoll_events & syscalls::EPOLLIN != 0) {
+			if epoll_events & syscalls::EPOLLIN != 0 {
 				let buffer = [0, ..8];
 
 				let ret = helpers::retry(||

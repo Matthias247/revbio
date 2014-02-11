@@ -82,7 +82,7 @@ impl Timer {
 		let ret = unsafe {
 			syscalls::timerfd_settime(self.fd, 0, &new_value, 0 as *syscalls::itimerspec)
 		};
-		if (ret != 0) {
+		if ret != 0 {
 			fail!("Error on stopping timer {0}", helpers::last_error().desc);
 		}
 
@@ -110,7 +110,7 @@ impl Timer {
 		let ret = unsafe {
 			syscalls::timerfd_settime(self.fd, 0, &new_value, 0 as *syscalls::itimerspec)
 		};
-		if (ret != 0) {
+		if ret != 0 {
 			fail!("Error on starting timer {0}", helpers::last_error().desc);
 		}
 
@@ -137,7 +137,7 @@ impl Timer {
 		unsafe {
 			let timer: *mut Timer = func_ptr as *mut Timer;
 
-			if (epoll_events & syscalls::EPOLLIN != 0) {
+			if epoll_events & syscalls::EPOLLIN != 0 {
 				let buffer = [0, ..8];
 
 				let ret = helpers::retry(||

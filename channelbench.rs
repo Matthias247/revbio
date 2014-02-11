@@ -11,9 +11,9 @@ use revbio::EventQueue;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-	do native::start(argc, argv) {
+	native::start(argc, argv, proc() {
 		bench_conditions_main();
-	}
+	})
 }
 
 fn timediff(start: time::Timespec, end: time::Timespec) -> f64 {
@@ -38,11 +38,11 @@ fn bench_conditions_main() {
 	let (port,chan): (Port<i32>, Chan<i32>) = Chan::new();
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() { 
 		for _ in range(0,ITERATIONS) {
 			chan.send(0);
 		}
-	}
+	});
 
 	for _ in range(0,ITERATIONS) {
 		port.recv();
@@ -55,11 +55,11 @@ fn bench_conditions_main() {
 	let (rx,tx): (BlockingReceiver<i32>, Transmitter<i32>) = Channel::create_blocking();
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		for _ in range(0,ITERATIONS) {
 			tx.send(0);
 		}
-	}
+	});
 
 	for _ in range(0,ITERATIONS) {
 		rx.recv();
@@ -74,11 +74,11 @@ fn bench_conditions_main() {
 	let mut nr_received = 0u32;
 	let start_time = time::get_time();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		for _ in range(0,ITERATIONS) {
 			tx.send(0);
 		}
-	}
+	});
 
 	loop {
 		let event = ev_queue.next_event().unwrap();			

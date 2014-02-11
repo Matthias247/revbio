@@ -10,7 +10,6 @@
 
 use std::cast;
 use std::libc;
-use std::util::NonCopyable;
 use extra::ringbuf::RingBuf;
 use extra::container::Deque;
 
@@ -22,8 +21,7 @@ use super::helpers;
 
 pub struct EventQueueImpl {
 	priv fd: i32, // epoll fd,
-	priv ready_events: RingBuf<events::Event>,
-	priv nc: NonCopyable
+	priv ready_events: RingBuf<events::Event>
 }
 
 impl IEventQueue for EventQueueImpl {
@@ -46,8 +44,7 @@ impl EventQueueImpl {
 		}
 		EventQueueImpl{
 				fd: fd,
-				ready_events: RingBuf::new(),
-				nc: NonCopyable
+				ready_events: RingBuf::new()
 		}
 	}
 

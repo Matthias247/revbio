@@ -12,18 +12,18 @@ use revbio::tcp::{TcpSocket,RawTcpSocket,TcpServerSocket};
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-	do native::start(argc, argv) {
+	native::start(argc, argv, proc() {
 		main();
-	}
+	})
 }
 
 fn main() {
 	let mut ev_queue = EventQueue::new();
 	let (rx,tx): (BlockingReceiver<bool>,Transmitter<bool>) = Channel::create_blocking();
 
-	do native::task::spawn() {
+	native::task::spawn(proc() {
 		servertask(tx);
-	}
+	});
 
 	// Wait for the server to start up
 	rx.recv();
@@ -107,9 +107,9 @@ fn servertask(start_tx: Transmitter<bool>) {
 					let acceptres = server_socket.accept();
 					let socket = acceptres.unwrap();
 					println!("Accepted a client");
-					do native::task::spawn() {
+					native::task::spawn(proc() {
 						clienttask(socket);
-					}
+					});
 					client_count -= 1;
 					if client_count == 0 {
 						server_socket.close();
