@@ -10,8 +10,8 @@
 
 use std::cast;
 use std::libc;
-use extra::ringbuf::RingBuf;
-use extra::container::Deque;
+use collections::ringbuf::RingBuf;
+use collections::deque::Deque;
 
 use super::eventqueue::IEventQueue;
 use super::events;

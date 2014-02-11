@@ -93,7 +93,7 @@ fn subtask(tx: Transmitter<~str>) {
 				events::ConnectedEvent => {
 					tx.send(~"TCP stream got connected");
 					stream_alive = true;
-					socket.write(request.as_bytes());
+					let _ = socket.write(request.as_bytes());
 					iterations -= 1;
 				},
 				events::IoErrorEvent(err) => {

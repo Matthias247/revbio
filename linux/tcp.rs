@@ -29,10 +29,10 @@ use super::syscalls;
 use super::helpers;
 
 fn htons(u: u16) -> u16 {
-	intrinsics::to_be16(u as i16) as u16
+	mem::to_be16(u as i16) as u16
 }
 // fn ntohs(u: u16) -> u16 {
-// 	intrinsics::from_be16(u as i16) as u16
+// 	mem::from_be16(u as i16) as u16
 // }
 
 enum InAddr {
@@ -431,7 +431,7 @@ impl TcpSocket {
 				if (*sock).socket.connection_state == Connected {
 					if (epoll_events & syscalls::EPOLLIN != 0) || (epoll_events & syscalls::EPOLLERR != 0) {
 						if epoll_events & syscalls::EPOLLHUP == 0 {
-							(*sock).read_available_bytes();
+							let _ = (*sock).read_available_bytes();
 						} else {
 							(*sock).available_bytes = 0;
 						}

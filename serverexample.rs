@@ -129,5 +129,5 @@ fn servertask(start_tx: Transmitter<bool>) {
 
 fn clienttask(mut socket: RawTcpSocket) {
 	let response = "HTTP 400 bad request";
-	socket.write(response.as_bytes());
+	let _ = socket.write(response.as_bytes());
 }

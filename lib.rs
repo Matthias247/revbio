@@ -16,7 +16,7 @@
 
 #[no_uv];
 extern mod native;
-extern mod extra;
+extern mod collections;
 
 use std::io::IoError;
 

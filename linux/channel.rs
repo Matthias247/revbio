@@ -14,8 +14,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::unstable::mutex::Mutex;
 use std::sync::arc::UnsafeArc;
-use extra::ringbuf::RingBuf;
-use extra::container::Deque;
+use collections::ringbuf::RingBuf;
+use collections::deque::Deque;
 
 use super::events;
 use super::eventqueue::EventQueue;
